@@ -1,3 +1,4 @@
+//user de busca
 export interface User {
   id: string;
   email: string;
@@ -50,8 +51,16 @@ export interface Certificado {
   url_pdf?: string;
 }
 
+//user de login
+export interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+  is_active: boolean;
+}
+
 export interface LoginResponse {
   access: string;
   refresh: string;
-  user?: User;
+  user: AuthUser;
 }
