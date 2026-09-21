@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Evento } from "@/types";
+import api from "@/lib/api";
+import type { Evento, Inscricao } from "@/types";
 import { useAuthStore } from "@/store/auth";
 
 interface EventoModalProps {
@@ -14,7 +15,12 @@ export function EventoModal({ evento, onClose }: EventoModalProps) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  // Fecha o modal ao apertar ESC
+  const [jaInscrito, setJaInscrito] = useState(false);
+  const [verificando, setVerificando] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  // Fecha ao apertar ESC
   useEffect(() => {
     function handleEsc(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -23,7 +29,7 @@ export function EventoModal({ evento, onClose }: EventoModalProps) {
     return () => document.removeEventListener("keydown", handleEsc);
   }, [onClose]);
 
-  // Bloqueia o scroll da página enquanto o modal está aberto
+  // Bloqueia scroll da página
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -31,13 +37,71 @@ export function EventoModal({ evento, onClose }: EventoModalProps) {
     };
   }, []);
 
-  function handleInscrever() {
+  // Verifica se o usuário já está inscrito neste evento
+  useEffect(() => {
+    async function verificarInscricao() {
+      if (!isAuthenticated) {
+        setVerificando(false);
+        return;
+      }
+
+      try {
+        const response = await api.get(
+          "/events/inscricoes/minhas-inscricoes/"
+        );
+        const inscricoes: Inscricao[] = response.data.results || response.data;
+        const inscrito = inscricoes.some(
+          (i) => String(i.evento) === String(evento.id)
+        );
+        setJaInscrito(inscrito);
+      } catch (err) {
+        console.error("Erro ao verificar inscrição:", err);
+      } finally {
+        setVerificando(false);
+      }
+    }
+
+    verificarInscricao();
+  }, [evento.id, isAuthenticated]);
+
+  async function handleInscrever() {
+    setErro(null);
+
     if (!isAuthenticated) {
       router.push("/login");
       return;
     }
-    // TODO: fazer POST /api/v1/events/inscricoes/
-    alert("Em breve: inscrição!");
+
+    setIsLoading(true);
+
+    try {
+      await api.post("/events/inscricoes/", {
+        evento: evento.id,
+      });
+      setJaInscrito(true);
+    } catch (err: unknown) {
+      console.error(err);
+      const axiosError = err as {
+        response?: { data?: Record<string, unknown> };
+      };
+
+      if (axiosError.response?.data) {
+        const data = axiosError.response.data;
+        const mensagens = Object.entries(data)
+          .map(([campo, valor]) => {
+            const texto = Array.isArray(valor)
+              ? valor.join(", ")
+              : String(valor);
+            return `${campo}: ${texto}`;
+          })
+          .join("\n");
+        setErro(mensagens);
+      } else {
+        setErro("Erro ao se inscrever. Tente novamente.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const tipoLabels: Record<Evento["tipo"], string> = {
@@ -49,11 +113,11 @@ export function EventoModal({ evento, onClose }: EventoModalProps) {
   return (
     <div
       className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-      onClick={onClose} // Fecha ao clicar fora
+      onClick={onClose}
     >
       <div
         className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative"
-        onClick={(e) => e.stopPropagation()} // Não fecha ao clicar dentro
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Botão fechar */}
         <button
@@ -64,7 +128,6 @@ export function EventoModal({ evento, onClose }: EventoModalProps) {
           ✕
         </button>
 
-        {/* Conteúdo */}
         <div className="p-8">
           {/* Badge tipo */}
           <span className="inline-block px-3 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">
@@ -76,12 +139,11 @@ export function EventoModal({ evento, onClose }: EventoModalProps) {
             {evento.titulo}
           </h2>
 
-          {/* Descrição completa */}
+          {/* Descrição */}
           <p className="text-zinc-600 mt-4 whitespace-pre-line">
             {evento.descricao || "Sem descrição."}
           </p>
 
-          {/* Divisor */}
           <hr className="my-6 border-zinc-200" />
 
           {/* Detalhes */}
@@ -136,24 +198,44 @@ export function EventoModal({ evento, onClose }: EventoModalProps) {
             </div>
           </div>
 
-          {/* Divisor */}
           <hr className="my-6 border-zinc-200" />
 
-          {/* Botão Inscrever */}
-          <button
-            onClick={handleInscrever}
-            disabled={evento.vagas_restantes === 0}
-            className="w-full bg-blue-900 hover:bg-blue-800 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white py-3 rounded-md font-medium transition"
-          >
-            {evento.vagas_restantes === 0
-              ? "Vagas esgotadas"
-              : "Inscrever-se"}
-          </button>
+          {/* Erro */}
+          {erro && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-md whitespace-pre-line mb-4">
+              {erro}
+            </div>
+          )}
 
-          {!isAuthenticated && (
-            <p className="text-xs text-zinc-500 text-center mt-3">
-              Você precisa estar logado para se inscrever
-            </p>
+          {/* Botão / Status */}
+          {verificando ? (
+            <div className="w-full bg-zinc-100 text-zinc-500 py-3 rounded-md font-medium text-center">
+              Verificando...
+            </div>
+          ) : jaInscrito ? (
+            <div className="w-full bg-green-100 text-green-800 py-3 rounded-md font-medium text-center border border-green-200">
+              ✅ Você está inscrito neste evento
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={handleInscrever}
+                disabled={evento.vagas_restantes === 0 || isLoading}
+                className="w-full bg-blue-900 hover:bg-blue-800 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white py-3 rounded-md font-medium transition"
+              >
+                {isLoading
+                  ? "Inscrevendo..."
+                  : evento.vagas_restantes === 0
+                  ? "Vagas esgotadas"
+                  : "Inscrever-se"}
+              </button>
+
+              {!isAuthenticated && (
+                <p className="text-xs text-zinc-500 text-center mt-3">
+                  Você precisa estar logado para se inscrever
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>
