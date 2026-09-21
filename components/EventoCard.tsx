@@ -1,0 +1,68 @@
+import Link from "next/link";
+import type { Evento } from "@/types";
+
+export function EventoCard({ evento }: { evento: Evento }) {
+  const tipoCores: Record<Evento["tipo"], string> = {
+    PRESENCIAL: "bg-blue-100 text-blue-800",
+    ONLINE: "bg-green-100 text-green-800",
+    HIBRIDO: "bg-purple-100 text-purple-800",
+  };
+
+  const tipoLabels: Record<Evento["tipo"], string> = {
+    PRESENCIAL: "Presencial",
+    ONLINE: "Online",
+    HIBRIDO: "Híbrido",
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-zinc-200 p-6 hover:shadow-md transition flex flex-col">
+      {/* Badge do tipo */}
+      <span
+        className={`inline-block self-start px-2 py-1 text-xs font-medium rounded ${tipoCores[evento.tipo]}`}
+      >
+        {tipoLabels[evento.tipo]}
+      </span>
+
+      {/* Título */}
+      <h2 className="text-xl font-bold text-zinc-900 mt-3 line-clamp-2">
+        {evento.titulo}
+      </h2>
+
+      {/* Descrição */}
+      <p className="text-sm text-zinc-600 mt-2 line-clamp-2 flex-grow">
+        {evento.descricao || "Sem descrição"}
+      </p>
+
+      {/* Informações */}
+      <div className="mt-4 space-y-1 text-sm text-zinc-600">
+        <p>
+          📅{" "}
+          {new Date(evento.data_inicio).toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
+        <p>
+          {evento.tipo === "ONLINE"
+            ? "🌐 Online"
+            : `📍 ${evento.local_presencial || "Local a definir"}`}
+        </p>
+        <p>
+          👥{" "}
+          {evento.vagas_restantes > 0
+            ? `${evento.vagas_restantes} vagas restantes`
+            : "Esgotado"}
+        </p>
+      </div>
+
+      {/* Botão */}
+      <Link
+        href={`/eventos/${evento.id}`}
+        className="block mt-4 text-center bg-blue-900 hover:bg-blue-800 text-white py-2 rounded-md font-medium transition"
+      >
+        Ver mais
+      </Link>
+    </div>
+  );
+}
