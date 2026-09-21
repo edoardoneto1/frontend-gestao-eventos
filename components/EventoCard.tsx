@@ -15,7 +15,7 @@ export function EventoCard({ evento }: { evento: Evento }) {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-zinc-200 p-6 hover:shadow-md transition flex flex-col">
+    <div className="bg-zinc-300 rounded-lg border border-blue-900 p-6 shadow-sm hover:shadow-md transition flex flex-col">
       {/* Badge do tipo */}
       <span
         className={`inline-block self-start px-2 py-1 text-xs font-medium rounded ${tipoCores[evento.tipo]}`}
