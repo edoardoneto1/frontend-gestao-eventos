@@ -1,7 +1,11 @@
-import Link from "next/link";
 import type { Evento } from "@/types";
 
-export function EventoCard({ evento }: { evento: Evento }) {
+interface EventoCardProps {
+  evento: Evento;
+  onVerMais: () => void;
+}
+
+export function EventoCard({ evento, onVerMais }: EventoCardProps) {
   const tipoCores: Record<Evento["tipo"], string> = {
     PRESENCIAL: "bg-blue-100 text-blue-800",
     ONLINE: "bg-green-100 text-green-800",
@@ -56,13 +60,12 @@ export function EventoCard({ evento }: { evento: Evento }) {
         </p>
       </div>
 
-      {/* Botão */}
-      <Link
-        href={`/eventos/${evento.id}`}
-        className="block mt-4 text-center bg-blue-900 hover:bg-blue-800 text-white py-2 rounded-md font-medium transition"
+      <button
+        onClick={onVerMais}
+        className="block w-full mt-4 text-center bg-blue-900 hover:bg-blue-800 text-white py-2 rounded-md font-medium transition"
       >
         Ver mais
-      </Link>
+      </button>
     </div>
   );
 }

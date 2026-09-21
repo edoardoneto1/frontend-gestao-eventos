@@ -6,11 +6,15 @@ import api from "@/lib/api";
 import type { Evento } from "@/types";
 import { EventoCard } from "@/components/EventoCard";
 import { Header } from "@/components/Header";
+import { EventoModal } from "@/components/EventoModal";
 
 export default function EventosPage() {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [eventoSelecionado, setEventoSelecionado] = useState<Evento | null>(
+    null
+  );
 
   useEffect(() => {
     async function fetchEventos() {
@@ -70,12 +74,24 @@ export default function EventosPage() {
           {!loading && !erro && eventos.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {eventos.map((evento) => (
-                <EventoCard key={evento.id} evento={evento} />
+                <EventoCard
+                  key={evento.id}
+                  evento={evento}
+                  onVerMais={() => setEventoSelecionado(evento)}
+                />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal */}
+      {eventoSelecionado && (
+        <EventoModal
+          evento={eventoSelecionado}
+          onClose={() => setEventoSelecionado(null)}
+        />
+      )}
     </>
   );
 }
