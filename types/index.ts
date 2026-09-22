@@ -29,7 +29,8 @@ export interface Evento {
 
 export interface Inscricao {
   id: string;
-  evento: number;
+  evento: string;
+  evento_detalhes?: Evento;
   evento_titulo: string;
   participante: number;
   participante_nome: string;

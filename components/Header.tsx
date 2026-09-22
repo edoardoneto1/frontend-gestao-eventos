@@ -16,8 +16,19 @@ export function Header() {
         <div className="flex gap-4 items-center">
           {isAuthenticated && user ? (
             <>
-              <span>Olá, {user.email.split("@")[0]}</span>
-              <button onClick={logout} className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-md font-medium transition">Sair</button>
+              <Link
+                href="/minhas-inscricoes"
+                className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-md font-medium transition text-sm"
+              >
+                Minhas Inscrições
+              </Link>
+              <span className="text-sm">Olá, {user.email.split("@")[0]}</span>
+              <button
+                onClick={logout}
+                className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-md font-medium transition"
+              >
+                Sair
+              </button>
             </>
           ) : (
             <>
