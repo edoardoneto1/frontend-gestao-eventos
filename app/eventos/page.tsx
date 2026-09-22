@@ -38,15 +38,23 @@ export default function EventosPage() {
       <Header />
       <div className="min-h-[calc(100vh-72px)] bg-zinc-100 py-12">
         <div className="max-w-6xl mx-auto px-6">
-          {/* Título + Botão */}
+          {/* Título + Botões */}
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-zinc-900">Eventos</h1>
-            <Link
-              href="/eventos/criar"
-              className="bg-blue-900 hover:bg-blue-800 text-white px-6 py-3 rounded-md font-medium transition"
-            >
-              + Criar Evento
-            </Link>
+            <div className="flex gap-3">
+              <Link
+                href="/meus-eventos"
+                className="bg-blue-900 hover:bg-blue-800 text-white px-6 py-3 rounded-md font-medium transition"
+              >
+                Meus Eventos
+              </Link>
+              <Link
+                href="/eventos/criar"
+                className="bg-blue-900 hover:bg-blue-800 text-white px-6 py-3 rounded-md font-medium transition"
+              >
+                + Criar Evento
+              </Link>
+            </div>
           </div>
 
           {/* Loading */}
