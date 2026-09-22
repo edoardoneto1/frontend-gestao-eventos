@@ -1,6 +1,19 @@
 import Link from "next/link";
 
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE: Hero
+//
+// Seção principal da landing page.
+// Mostra 3 "slides" empilhados (imagem + título + subtítulo)
+// e um botão "Explorar Eventos" no final.
+//
+// Não é um carrossel: os slides ficam todos visíveis, um embaixo
+// do outro. O usuário rola a página pra ver os próximos.
+// ─────────────────────────────────────────────────────────────
+
 export function Hero() {
+  // Array com os dados dos 3 slides.
+  // Se quiser adicionar/remover slides no futuro, basta mexer aqui.
   const slides = [
     {
       imagem:
@@ -25,23 +38,30 @@ export function Hero() {
 
   return (
     <section className="bg-white py-12">
+      {/* Container com largura máxima + espaçamento entre slides */}
       <div className="max-w-6xl mx-auto px-6 space-y-8">
         {slides.map((slide, index) => (
+          // Cada slide tem 500px de altura fixa.
+          // "overflow-hidden" garante que a imagem não vaze nas bordas
+          // arredondadas do rounded-lg.
           <div
             key={index}
             className="relative h-[500px] rounded-lg overflow-hidden"
           >
-            {/* Imagem de fundo */}
+            {/* Imagem de fundo: absolute cobre todo o container.
+                object-cover redimensiona sem distorcer. */}
             <img
               src={slide.imagem}
               alt={slide.titulo}
               className="absolute inset-0 w-full h-full object-cover"
             />
 
-            {/* Overlay escuro */}
+            {/* Overlay escuro (40% de preto).
+                Serve pra o texto branco ficar legível sobre a imagem. */}
             <div className="absolute inset-0 bg-black/40" />
 
-            {/* Texto */}
+            {/* Texto (fica acima do overlay via z-10).
+                Centralizado vertical e horizontalmente. */}
             <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-6">
               <h2 className="text-3xl md:text-4xl font-bold text-white">
                 {slide.titulo}
@@ -53,7 +73,9 @@ export function Hero() {
           </div>
         ))}
 
-        {/* Botão "Explorar Eventos" */}
+        {/* Botão principal de CTA (Call To Action).
+            Fica abaixo dos slides, centralizado.
+            Leva pra lista de eventos. */}
         <div className="text-center pt-8">
           <Link
             href="/eventos"

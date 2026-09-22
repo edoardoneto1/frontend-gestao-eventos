@@ -19,29 +19,34 @@ export default function MeusEventosPage() {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+
+  // Evento selecionado pra abrir no modal (null = fechado)
   const [eventoSelecionado, setEventoSelecionado] = useState<Evento | null>(
     null
   );
 
-  // Hidrata o estado do auth
+  // Carrega o auth do localStorage
   useEffect(() => {
     hydrate();
   }, [hydrate]);
 
-  // Proteção: redireciona pra /login se não autenticado
+  // Proteção: redireciona pra /login se não logado
   useEffect(() => {
     if (typeof window !== "undefined" && !isAuthenticated) {
       router.push("/login");
     }
   }, [isAuthenticated, router]);
 
-  // Busca os eventos do usuário logado
+  // Busca TODOS os eventos e filtra só os do usuário logado.
+  // O filtro é feito no front porque o backend não tem
+  // suporte a ?organizador= ainda.
   async function fetchMeusEventos() {
     try {
       setLoading(true);
       const response = await api.get("/events/eventos/");
       const todos: Evento[] = response.data.results || response.data;
 
+      // Compara o pkid do organizador com o id do usuário logado
       const meus = todos.filter((e) => e.organizador === user?.id);
       setEventos(meus);
     } catch (err) {
@@ -52,12 +57,16 @@ export default function MeusEventosPage() {
     }
   }
 
+  // Só busca quando o user estiver carregado (senão o filtro falha)
   useEffect(() => {
     if (user) fetchMeusEventos();
   }, [user]);
 
-  // Excluir evento (soft delete)
+  // Excluir evento.
+  // O backend faz SOFT DELETE: marca is_active=false em vez de
+  // apagar de verdade. O registro continua no banco (segurança).
   async function handleExcluir(eventoId: string, titulo: string) {
+    // Confirmação nativa do navegador
     const confirmado = window.confirm(
       `Tem certeza que deseja excluir o evento "${titulo}"?\n\nEssa ação não pode ser desfeita.`
     );
@@ -65,6 +74,7 @@ export default function MeusEventosPage() {
 
     try {
       await api.delete(`/events/eventos/${eventoId}/`);
+      // Remove da lista local sem precisar refetch
       setEventos((prev) => prev.filter((e) => e.id !== eventoId));
     } catch (err) {
       console.error(err);
@@ -72,7 +82,7 @@ export default function MeusEventosPage() {
     }
   }
 
-  // Enquanto não verifica autenticação, mostra loading
+  // Loading enquanto verifica autenticação
   if (!isAuthenticated) {
     return (
       <>
@@ -89,6 +99,7 @@ export default function MeusEventosPage() {
       <Header />
       <div className="min-h-[calc(100vh-72px)] bg-zinc-100 py-12">
         <div className="max-w-6xl mx-auto px-6">
+          {/* Título + botão de criar */}
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-zinc-900">Meus Eventos</h1>
             <Link
@@ -99,18 +110,21 @@ export default function MeusEventosPage() {
             </Link>
           </div>
 
+          {/* Estado: carregando */}
           {loading && (
             <div className="text-center py-12 text-zinc-500">
               Carregando seus eventos...
             </div>
           )}
 
+          {/* Estado: erro */}
           {!loading && erro && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md">
               {erro}
             </div>
           )}
 
+          {/* Estado: vazio — CTA pra criar o primeiro evento */}
           {!loading && !erro && eventos.length === 0 && (
             <div className="text-center py-12">
               <p className="text-zinc-500 mb-4">
@@ -125,9 +139,12 @@ export default function MeusEventosPage() {
             </div>
           )}
 
+          {/* Estado: com dados — grid de cards */}
           {!loading && !erro && eventos.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {eventos.map((evento) => (
+                // MeuEventoCard (diferente do EventoCard padrão)
+                // tem botões Ver / Editar / Excluir
                 <MeuEventoCard
                   key={evento.id}
                   evento={evento}
@@ -140,6 +157,7 @@ export default function MeusEventosPage() {
         </div>
       </div>
 
+      {/* Modal de detalhes (mesmo componente da lista geral) */}
       {eventoSelecionado && (
         <EventoModal
           evento={eventoSelecionado}

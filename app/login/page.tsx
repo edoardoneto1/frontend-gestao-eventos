@@ -6,7 +6,9 @@ import { useAuthStore } from "@/store/auth";
 import api from "@/lib/api";
 
 // ─────────────────────────────────────────────────────────────
-// Componente principal (precisa do Suspense por causa do useSearchParams)
+// Componente principal
+// O Suspense é obrigatório porque useSearchParams lê a URL
+// (?tab=register). Sem ele, o Next reclama em build.
 // ─────────────────────────────────────────────────────────────
 export default function LoginPage() {
   return (
@@ -17,12 +19,15 @@ export default function LoginPage() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Conteúdo da página
+// Conteúdo da página (abas + formulários)
 // ─────────────────────────────────────────────────────────────
 function LoginContent() {
   const searchParams = useSearchParams();
+  // ↑ Lê parâmetros da URL (ex: /login?tab=register)
+
   const tabFromUrl = searchParams.get("tab");
 
+  // Aba ativa. Se a URL tem ?tab=register, começa na aba de cadastro.
   const [aba, setAba] = useState<"login" | "register">(
     tabFromUrl === "register" ? "register" : "login"
   );
@@ -30,7 +35,8 @@ function LoginContent() {
   return (
     <div className="min-h-[calc(100vh-72px)] flex items-center justify-center bg-zinc-50 px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Abas */}
+        {/* Abas (Entrar / Criar Conta).
+            A aba ativa fica com fundo branco e borda azul embaixo. */}
         <div className="flex bg-white rounded-t-lg overflow-hidden border border-b-0 border-zinc-200">
           <button
             onClick={() => setAba("login")}
@@ -54,7 +60,7 @@ function LoginContent() {
           </button>
         </div>
 
-        {/* Conteúdo da aba */}
+        {/* Renderiza o formulário correspondente à aba ativa */}
         <div className="bg-white rounded-b-lg border border-zinc-200 p-8">
           {aba === "login" ? <FormLogin /> : <FormCadastro />}
         </div>
@@ -64,11 +70,15 @@ function LoginContent() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Formulário de Login
+// FORMULÁRIO DE LOGIN
+// Envia email/senha pro backend. Em caso de sucesso, o store
+// (Zustand) salva o usuário + token, e redireciona pra /.
 // ─────────────────────────────────────────────────────────────
 function FormLogin() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
+  // ↑ Função do store que faz POST /user/token/ e salva no localStorage
+
   const isLoading = useAuthStore((s) => s.isLoading);
 
   const [email, setEmail] = useState("");
@@ -80,6 +90,7 @@ function FormLogin() {
     setErro(null);
 
     try {
+      // login() faz POST /user/token/ e salva o token no localStorage
       await login(email, password);
       router.push("/");
     } catch (err: unknown) {
@@ -140,6 +151,7 @@ function FormLogin() {
         Não tem conta?{" "}
         <button
           type="button"
+          // Recarrega a página com ?tab=register pra mudar de aba
           onClick={() => (window.location.href = "/login?tab=register")}
           className="text-blue-900 font-medium hover:underline"
         >
@@ -151,7 +163,8 @@ function FormLogin() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Formulário de Cadastro
+// FORMULÁRIO DE CADASTRO
+// Faz POST /user/register/ e, em seguida, login automático.
 // ─────────────────────────────────────────────────────────────
 function FormCadastro() {
   const router = useRouter();
@@ -171,6 +184,7 @@ function FormCadastro() {
     e.preventDefault();
     setErro(null);
 
+    // --- Validações locais (antes de enviar pro backend) ---
     if (password1 !== password2) {
       setErro("As senhas não são idênticas.");
       return;
@@ -181,6 +195,7 @@ function FormCadastro() {
       return;
     }
 
+    // Remove pontos/traços do CPF/CNPJ: "111.444.777-35" → "11144477735"
     const cpfLimpo = cpfCnpj.replace(/\D/g, "");
     if (cpfLimpo.length !== 11 && cpfLimpo.length !== 14) {
       setErro("CPF deve ter 11 dígitos ou CNPJ 14 dígitos.");
@@ -190,6 +205,7 @@ function FormCadastro() {
     setIsLoading(true);
 
     try {
+      // 1) Cria a conta
       await api.post("/user/register/", {
         email,
         cpf_cnpj: cpfLimpo,
@@ -199,9 +215,11 @@ function FormCadastro() {
         receive_emails: receiveEmails,
       });
 
+      // 2) Faz login automático (o backend não retorna token no register)
       await login(email, password1);
       router.push("/");
     } catch (err: unknown) {
+      // Erros do backend (ex: email já cadastrado, CPF inválido)
       console.error(err);
       const axiosError = err as { response?: { data?: unknown } };
       if (axiosError.response?.data) {
@@ -226,6 +244,7 @@ function FormCadastro() {
         </div>
       )}
 
+      {/* Email */}
       <div>
         <label className="block text-sm font-medium mb-1 text-zinc-700">
           Email
@@ -240,6 +259,7 @@ function FormCadastro() {
         />
       </div>
 
+      {/* CPF ou CNPJ */}
       <div>
         <label className="block text-sm font-medium mb-1 text-zinc-700">
           CPF ou CNPJ
@@ -255,6 +275,7 @@ function FormCadastro() {
         />
       </div>
 
+      {/* Senha */}
       <div>
         <label className="block text-sm font-medium mb-1 text-zinc-700">
           Senha
@@ -270,6 +291,7 @@ function FormCadastro() {
         />
       </div>
 
+      {/* Confirmar senha */}
       <div>
         <label className="block text-sm font-medium mb-1 text-zinc-700">
           Confirmar senha
@@ -285,6 +307,7 @@ function FormCadastro() {
         />
       </div>
 
+      {/* Checkboxes: termos (obrigatório) + emails (opcional) */}
       <div className="space-y-2 pt-2">
         <label className="flex items-start gap-2 text-sm text-zinc-700 cursor-pointer">
           <input

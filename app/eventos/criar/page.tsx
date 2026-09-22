@@ -12,7 +12,7 @@ export default function CriarEventoPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hydrate = useAuthStore((s) => s.hydrate);
 
-  // Estado dos campos
+  // Estados do formulário (cada campo do evento)
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [dataInicio, setDataInicio] = useState("");
@@ -24,48 +24,53 @@ export default function CriarEventoPage() {
   const [vagasTotais, setVagasTotais] = useState("");
   const [cargaHoraria, setCargaHoraria] = useState("");
 
+  // Estados de controle
   const [erro, setErro] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Hidrata o estado do auth
+  // Carrega o auth do localStorage
   useEffect(() => {
     hydrate();
   }, [hydrate]);
 
-  // Proteção: se não logado, redireciona pra /login
+  // Proteção: redireciona pra /login se não logado
   useEffect(() => {
     if (typeof window !== "undefined" && !isAuthenticated) {
       router.push("/login");
     }
   }, [isAuthenticated, router]);
 
+  // Envia o formulário (cria evento)
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
     setIsLoading(true);
 
     try {
+      // POST /eventos/ cria um novo evento.
+      // O backend associa automaticamente o organizador (usuário logado).
       await api.post("/events/eventos/", {
         titulo,
         descricao: descricao || null,
+        // Converte "2026-11-20T19:30" (input) pra ISO 8601
         data_inicio: new Date(dataInicio).toISOString(),
         data_fim: new Date(dataFim).toISOString(),
         tipo,
-        local_presencial:
-          tipo === "ONLINE" ? null : localPresencial || null,
+        // Local só faz sentido se não for online
+        local_presencial: tipo === "ONLINE" ? null : localPresencial || null,
         vagas_totais: parseInt(vagasTotais),
         carga_horaria_horas: parseInt(cargaHoraria) || 0,
       });
 
       router.push("/eventos");
     } catch (err: unknown) {
+      // Backend retorna { campo: [mensagem] } ou { errors: { campo: [msg] } }
       console.error(err);
       const axiosError = err as {
         response?: { data?: Record<string, unknown> };
       };
 
       if (axiosError.response?.data) {
-        // Extrai a mensagem do backend
         const data = axiosError.response.data;
         const mensagens = Object.entries(data)
           .map(([campo, valor]) => {
@@ -84,7 +89,7 @@ export default function CriarEventoPage() {
     }
   }
 
-  // Enquanto não verifica autenticação, mostra loading
+  // Loading enquanto verifica autenticação
   if (!isAuthenticated) {
     return (
       <>
@@ -101,7 +106,6 @@ export default function CriarEventoPage() {
       <Header />
       <div className="min-h-[calc(100vh-72px)] bg-zinc-50 py-12">
         <div className="max-w-2xl mx-auto px-6">
-          {/* Voltar */}
           <Link
             href="/eventos"
             className="text-sm text-blue-900 hover:underline mb-4 inline-block"
@@ -109,17 +113,15 @@ export default function CriarEventoPage() {
             ← Voltar para eventos
           </Link>
 
-          {/* Título */}
           <h1 className="text-3xl font-bold text-zinc-900 mb-8">
             Criar Evento
           </h1>
 
-          {/* Formulário */}
           <form
             onSubmit={handleSubmit}
             className="bg-white rounded-lg border border-zinc-200 p-8 space-y-6"
           >
-            {/* Erro */}
+            {/* Mensagem de erro */}
             {erro && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-md whitespace-pre-line">
                 {erro}
@@ -168,6 +170,8 @@ export default function CriarEventoPage() {
                   required
                   className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-900"
                 />
+                {/* datetime-local: calendário + relógio nativos do navegador.
+                    Retorna "yyyy-MM-ddTHH:mm". */}
               </div>
 
               <div>
@@ -207,6 +211,8 @@ export default function CriarEventoPage() {
             {/* Local presencial (só se PRESENCIAL ou HIBRIDO) */}
             {(tipo === "PRESENCIAL" || tipo === "HIBRIDO") && (
               <div>
+                {/* Só aparece se o tipo for Presencial ou Híbrido.
+                    Eventos Online não têm local físico. */}
                 <label className="block text-sm font-medium mb-1 text-zinc-700">
                   Local presencial
                 </label>

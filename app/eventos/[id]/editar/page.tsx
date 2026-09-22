@@ -11,10 +11,12 @@ export default function EditarEventoPage() {
   const router = useRouter();
   const params = useParams();
   const eventoId = params.id as string;
+  // ↑ Pega o ID do evento da URL (ex: /eventos/ABC/editar → ABC)
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hydrate = useAuthStore((s) => s.hydrate);
 
+  // Estados do formulário (cada campo do evento)
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [dataInicio, setDataInicio] = useState("");
@@ -26,23 +28,24 @@ export default function EditarEventoPage() {
   const [vagasTotais, setVagasTotais] = useState("");
   const [cargaHoraria, setCargaHoraria] = useState("");
 
+  // Estados de controle da página
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Hidrata auth
+  // Carrega o auth do localStorage
   useEffect(() => {
     hydrate();
   }, [hydrate]);
 
-  // Proteção: se não logado, redireciona
+  // Proteção: redireciona pra /login se não estiver logado
   useEffect(() => {
     if (typeof window !== "undefined" && !isAuthenticated) {
       router.push("/login");
     }
   }, [isAuthenticated, router]);
 
-  // Busca o evento pra preencher o formulário
+  // Busca os dados do evento pra preencher o formulário
   useEffect(() => {
     async function fetchEvento() {
       try {
@@ -56,10 +59,9 @@ export default function EditarEventoPage() {
         setVagasTotais(String(e.vagas_totais));
         setCargaHoraria(String(e.carga_horaria_horas));
 
-        // Converte ISO pra "datetime-local" (yyyy-MM-ddTHH:mm)
-        const dataInicioLocal = new Date(e.data_inicio);
-        const dataFimLocal = new Date(e.data_fim);
-
+        // Converte data ISO (backend) pra formato do <input datetime-local>
+        // ISO: "2026-11-20T19:30:00-03:00"
+        // Input: "2026-11-20T19:30"
         function toLocalInput(d: Date) {
           const pad = (n: number) => String(n).padStart(2, "0");
           return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
@@ -67,8 +69,8 @@ export default function EditarEventoPage() {
           )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         }
 
-        setDataInicio(toLocalInput(dataInicioLocal));
-        setDataFim(toLocalInput(dataFimLocal));
+        setDataInicio(toLocalInput(new Date(e.data_inicio)));
+        setDataFim(toLocalInput(new Date(e.data_fim)));
       } catch (err) {
         console.error(err);
         setErro("Erro ao carregar evento.");
@@ -86,20 +88,23 @@ export default function EditarEventoPage() {
     setIsLoading(true);
 
     try {
+      // PATCH atualiza só os campos enviados (não substitui o objeto todo)
       await api.patch(`/events/eventos/${eventoId}/`, {
         titulo,
         descricao: descricao || null,
         data_inicio: new Date(dataInicio).toISOString(),
         data_fim: new Date(dataFim).toISOString(),
         tipo,
-        local_presencial:
-          tipo === "ONLINE" ? null : localPresencial || null,
+        // Local só faz sentido se não for online
+        local_presencial: tipo === "ONLINE" ? null : localPresencial || null,
         vagas_totais: parseInt(vagasTotais),
         carga_horaria_horas: parseInt(cargaHoraria) || 0,
       });
 
       router.push("/meus-eventos");
     } catch (err: unknown) {
+      // O backend retorna { errors: { campo: [mensagem] } }.
+      // Extraímos e transformamos em texto legível.
       console.error(err);
       const axiosError = err as {
         response?: { data?: Record<string, unknown> };
@@ -127,6 +132,7 @@ export default function EditarEventoPage() {
     }
   }
 
+  // Enquanto não verifica auth ou não carrega o evento, mostra loading
   if (!isAuthenticated || carregando) {
     return (
       <>
@@ -158,6 +164,7 @@ export default function EditarEventoPage() {
             onSubmit={handleSubmit}
             className="bg-white rounded-lg border border-zinc-200 p-8 space-y-6"
           >
+            {/* Mensagem de erro */}
             {erro && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-md whitespace-pre-line">
                 {erro}
@@ -239,7 +246,7 @@ export default function EditarEventoPage() {
               </select>
             </div>
 
-            {/* Local */}
+            {/* Local (só se Presencial ou Híbrido) */}
             {(tipo === "PRESENCIAL" || tipo === "HIBRIDO") && (
               <div>
                 <label className="block text-sm font-medium mb-1 text-zinc-700">
@@ -254,7 +261,7 @@ export default function EditarEventoPage() {
               </div>
             )}
 
-            {/* Vagas + Carga */}
+            {/* Vagas + Carga horária */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1 text-zinc-700">
