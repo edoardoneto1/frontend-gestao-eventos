@@ -1,17 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import type { Inscricao } from "@/types";
 import { Header } from "@/components/Header";
+import { useAuthStore } from "@/store/auth";
 
 export default function MinhasInscricoesPage() {
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hydrate = useAuthStore((s) => s.hydrate);
+
   const [inscricoes, setInscricoes] = useState<Inscricao[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [checkinLoadingId, setCheckinLoadingId] = useState<string | null>(null);
 
+  // Hidrata auth
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  // Proteção: redireciona se não logado
+  useEffect(() => {
+    if (typeof window !== "undefined" && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  // Busca inscrições
   async function fetchInscricoes() {
     try {
       setLoading(true);
@@ -26,14 +45,13 @@ export default function MinhasInscricoesPage() {
   }
 
   useEffect(() => {
-    fetchInscricoes();
-  }, []);
+    if (isAuthenticated) fetchInscricoes();
+  }, [isAuthenticated]);
 
   async function handleCheckin(inscricaoId: string) {
     setCheckinLoadingId(inscricaoId);
     try {
       await api.post(`/events/inscricoes/${inscricaoId}/check-in/`);
-      // Atualiza só a inscrição afetada
       setInscricoes((prev) =>
         prev.map((i) =>
           i.id === inscricaoId
@@ -57,6 +75,18 @@ export default function MinhasInscricoesPage() {
     } finally {
       setCheckinLoadingId(null);
     }
+  }
+
+  // Enquanto não verifica, mostra loading
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-[calc(100vh-72px)] bg-zinc-50 flex items-center justify-center">
+          <p className="text-zinc-500">Verificando autenticação...</p>
+        </div>
+      </>
+    );
   }
 
   return (
@@ -136,7 +166,6 @@ export default function MinhasInscricoesPage() {
                       </div>
                     )}
 
-                    {/* Status + Botões */}
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                       {inscricao.presenca_confirmada ? (
                         <span className="inline-block px-3 py-1 text-xs font-medium rounded bg-green-100 text-green-800">
@@ -163,7 +192,6 @@ export default function MinhasInscricoesPage() {
                       )}
                     </div>
 
-                    {/* Botão Ver evento */}
                     <div className="mt-4">
                       <Link
                         href="/eventos"

@@ -1,16 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import type { Certificado } from "@/types";
 import { Header } from "@/components/Header";
+import { useAuthStore } from "@/store/auth";
 
 export default function MeusCertificadosPage() {
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hydrate = useAuthStore((s) => s.hydrate);
+
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
+  // Hidrata o auth
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  // Proteção: redireciona se não logado
+  useEffect(() => {
+    if (typeof window !== "undefined" && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  // Busca certificados
   useEffect(() => {
     async function fetchCertificados() {
       try {
@@ -24,8 +42,20 @@ export default function MeusCertificadosPage() {
         setLoading(false);
       }
     }
-    fetchCertificados();
-  }, []);
+    if (isAuthenticated) fetchCertificados();
+  }, [isAuthenticated]);
+
+  // Enquanto não verifica, mostra loading
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-[calc(100vh-72px)] bg-zinc-50 flex items-center justify-center">
+          <p className="text-zinc-500">Verificando autenticação...</p>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -66,7 +96,6 @@ export default function MeusCertificadosPage() {
                   key={certificado.id}
                   className="bg-white rounded-lg border-2 border-blue-900 p-8 shadow-md"
                 >
-                  {/* Header do certificado */}
                   <div className="text-center border-b border-zinc-200 pb-4 mb-4">
                     <span className="text-4xl">🎓</span>
                     <h2 className="text-sm font-medium text-blue-900 uppercase tracking-wide mt-2">
@@ -74,11 +103,8 @@ export default function MeusCertificadosPage() {
                     </h2>
                   </div>
 
-                  {/* Corpo */}
                   <div className="text-center space-y-3">
-                    <p className="text-zinc-600 text-sm">
-                      Certificamos que
-                    </p>
+                    <p className="text-zinc-600 text-sm">Certificamos que</p>
                     <p className="text-2xl font-bold text-zinc-900">
                       {certificado.participante_nome || "Participante"}
                     </p>
@@ -94,7 +120,6 @@ export default function MeusCertificadosPage() {
                     </p>
                   </div>
 
-                  {/* Rodapé */}
                   <div className="mt-6 pt-4 border-t border-zinc-200 flex flex-col md:flex-row justify-between items-center gap-2 text-xs text-zinc-500">
                     <span>
                       📅 Emitido em{" "}
